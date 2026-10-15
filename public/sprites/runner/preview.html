@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Runner Sprite Animation & Edge Verification</title>
+  <style>
+    body {
+      font-family: monospace;
+      margin: 20px;
+      background: #111;
+      color: #eee;
+    }
+    .grid {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    .panel {
+      padding: 20px;
+      border-radius: 8px;
+      border: 2px solid #333;
+    }
+    .light {
+      background-color: #F7F5EE;
+      color: #161616;
+      border-color: #161616;
+    }
+    .dark {
+      background-color: #1A1B26;
+      color: #C0CAF5;
+      border-color: rgba(192, 202, 245, 0.3);
+    }
+    canvas {
+      display: block;
+      margin: 10px 0;
+      image-rendering: auto;
+    }
+    .controls {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>MUF Portfolio Runner — Sprite Animation Preview</h1>
+  <p>Verify that running loops smoothly with zero jitter, ground line aligns, and there are NO white speckles or fringe.</p>
+
+  <div class="grid">
+    <div class="panel light">
+      <h3>Light Theme (Cream #F7F5EE)</h3>
+      <canvas id="lightCanvas" width="300" height="200"></canvas>
+      <div id="lightInfo">Frame: 0</div>
+    </div>
+
+    <div class="panel dark">
+      <h3>Dark Theme (Tokyo Night #1A1B26)</h3>
+      <canvas id="darkCanvas" width="300" height="200"></canvas>
+      <div id="darkInfo">Frame: 0</div>
+    </div>
+  </div>
+
+  <script>
+    const frames = [];
+    const frameNames = ['run_0', 'run_1', 'run_2', 'run_3', 'run_4', 'run_5'];
+    let loaded = 0;
+
+    frameNames.forEach((name, i) => {
+      const img = new Image();
+      img.src = `/sprites/runner/${name}.png`;
+      img.onload = () => {
+        loaded++;
+        if (loaded === frameNames.length) {
+          startAnimation();
+        }
+      };
+      frames.push(img);
+    });
+
+    const lightCtx = document.getElementById('lightCanvas').getContext('2d');
+    const darkCtx = document.getElementById('darkCanvas').getContext('2d');
+
+    let currentFrame = 0;
+    let lastTime = 0;
+    const fps = 10.5; // ~95ms per frame
+    const interval = 1000 / fps;
+
+    function render(ctx, isDark, frameImg, idx) {
+      const w = ctx.canvas.width;
+      const h = ctx.canvas.height;
+      const groundY = 160;
+
+      ctx.fillStyle = isDark ? '#1A1B26' : '#F7F5EE';
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = isDark ? 'rgba(192, 202, 245, 0.08)' : 'rgba(22, 22, 22, 0.08)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 32) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 32) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      // Ground
+      ctx.strokeStyle = isDark ? '#C0CAF5' : '#161616';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      ctx.lineTo(w, groundY);
+      ctx.stroke();
+
+      // Shadow
+      ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(22, 22, 22, 0.2)';
+      ctx.beginPath();
+      ctx.ellipse(150, groundY + 1, 26, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Character Sprite
+      // Render height: 90px (in-game target size)
+      const renderH = 90;
+      const aspect = 320 / 300; // 1.067
+      const renderW = Math.round(renderH * aspect);
+      // Sprite anchor: Torso at x=160/320 -> 50% width, ground at y=275/300 -> 91.6% height
+      const drawX = 150 - Math.round(renderW * 0.5);
+      const drawY = groundY - Math.round(renderH * (275 / 300));
+
+      ctx.drawImage(frameImg, drawX, drawY, renderW, renderH);
+    }
+
+    function startAnimation() {
+      function loop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        if (timestamp - lastTime >= interval) {
+          lastTime = timestamp;
+          currentFrame = (currentFrame + 1) % 6;
+          document.getElementById('lightInfo').textContent = `Frame: ${currentFrame} (${frameNames[currentFrame]})`;
+          document.getElementById('darkInfo').textContent = `Frame: ${currentFrame} (${frameNames[currentFrame]})`;
+        }
+
+        render(lightCtx, false, frames[currentFrame], currentFrame);
+        render(darkCtx, true, frames[currentFrame], currentFrame);
+
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    }
+  </script>
+</body>
+</html>
