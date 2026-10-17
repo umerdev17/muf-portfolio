@@ -48,30 +48,17 @@ export default function About() {
               <div className="my-6">
                 <div className="relative inline-block mb-4">
                   <div
-                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden relative"
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden relative flex items-center justify-center select-none"
                     style={{
                       border: 'var(--bw) solid var(--border)',
                       boxShadow: 'var(--shadow-hard)',
-                      backgroundColor: 'var(--canvas-base)',
-                    }}
-                  >
-                    <img
-                      src="/images/umer-portrait.jpg"
-                      alt={siteConfig.name}
-                      className="w-full h-full object-cover object-top"
-                    />
-                  </div>
-                  {/* Floating Monogram Badge */}
-                  <div
-                    className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-lg font-mono font-bold text-xs"
-                    style={{
                       backgroundColor: 'var(--accent)',
                       color: 'var(--accent-ink)',
-                      border: 'var(--bw) solid var(--border)',
-                      boxShadow: '2px 2px 0 0 var(--border)',
                     }}
                   >
-                    {siteConfig.monogram}
+                    <span className="font-mono font-black text-3xl sm:text-4xl tracking-tight">
+                      {siteConfig.monogram}
+                    </span>
                   </div>
                 </div>
 

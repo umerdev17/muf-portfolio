@@ -17,23 +17,24 @@ export interface SpriteInfo {
 }
 
 export const SPRITE_MANIFEST: Record<string, SpriteInfo> = {
-  run_0: { path: '/sprites/runner/run_0.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  run_1: { path: '/sprites/runner/run_1.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  run_2: { path: '/sprites/runner/run_2.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  run_3: { path: '/sprites/runner/run_3.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  run_4: { path: '/sprites/runner/run_4.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  run_5: { path: '/sprites/runner/run_5.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
+  run_0: { path: '/sprites/runner/run_0.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  run_1: { path: '/sprites/runner/run_1.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  run_2: { path: '/sprites/runner/run_2.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  run_3: { path: '/sprites/runner/run_3.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  run_4: { path: '/sprites/runner/run_4.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  run_5: { path: '/sprites/runner/run_5.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
 
-  jump_takeoff: { path: '/sprites/runner/jump_takeoff.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  jump_ascend: { path: '/sprites/runner/jump_ascend.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  jump_peak: { path: '/sprites/runner/jump_peak.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  jump_double: { path: '/sprites/runner/jump_double.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
-  jump_fall: { path: '/sprites/runner/jump_fall.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 122, renderH: 148, groundOffset: 137 },
+  jump_takeoff: { path: '/sprites/runner/jump_takeoff.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  jump_ascend: { path: '/sprites/runner/jump_ascend.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  jump_peak: { path: '/sprites/runner/jump_peak.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  jump_double: { path: '/sprites/runner/jump_double.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  jump_fall: { path: '/sprites/runner/jump_fall.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  jump_land: { path: '/sprites/runner/jump_land.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
 
-  idle_0: { path: '/sprites/runner/idle_0.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 91, renderH: 111, groundOffset: 103 },
-  idle_1: { path: '/sprites/runner/idle_1.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 91, renderH: 111, groundOffset: 103 },
-  stumble: { path: '/sprites/runner/stumble.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 101, renderH: 122, groundOffset: 113 },
-  crash: { path: '/sprites/runner/crash.png', width: 560, height: 680, aspect: 0.824, anchorX: 280, groundY: 630, renderW: 102, renderH: 123, groundOffset: 114 },
+  idle_0: { path: '/sprites/runner/idle_0.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  idle_1: { path: '/sprites/runner/idle_1.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  stumble: { path: '/sprites/runner/stumble.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
+  crash: { path: '/sprites/runner/crash.png', width: 128, height: 128, aspect: 1.0, anchorX: 64, groundY: 120, renderW: 56, renderH: 56, groundOffset: 53 },
 };
 
 class SpriteManager {

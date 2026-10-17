@@ -2,91 +2,144 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Runner Sprite Animation & Edge Verification</title>
+  <title>Chicken Sprite Animation Preview</title>
   <style>
     body {
-      font-family: monospace;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
       margin: 20px;
       background: #111;
       color: #eee;
     }
     .grid {
       display: flex;
-      gap: 30px;
+      gap: 24px;
       flex-wrap: wrap;
     }
     .panel {
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 12px;
       border: 2px solid #333;
     }
     .light {
       background-color: #F7F5EE;
       color: #161616;
       border-color: #161616;
+      box-shadow: 4px 4px 0 0 #161616;
     }
     .dark {
       background-color: #1A1B26;
       color: #C0CAF5;
-      border-color: rgba(192, 202, 245, 0.3);
+      border-color: rgba(192, 202, 245, 0.4);
+      box-shadow: 4px 4px 0 0 rgba(0, 0, 0, 0.6);
     }
     canvas {
       display: block;
       margin: 10px 0;
-      image-rendering: auto;
+      image-rendering: pixelated;
+    }
+    .status {
+      font-size: 13px;
+      font-family: monospace;
+      font-weight: bold;
     }
     .controls {
+      display: flex;
+      gap: 8px;
       margin-top: 10px;
+    }
+    button {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #222;
+      color: #fff;
+      cursor: pointer;
+      font-family: monospace;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #333;
+    }
+    .montage-container {
+      margin-top: 30px;
+    }
+    .montage-container img {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 2px solid #333;
     }
   </style>
 </head>
 <body>
-  <h1>MUF Portfolio Runner — Sprite Animation Preview</h1>
-  <p>Verify that running loops smoothly with zero jitter, ground line aligns, and there are NO white speckles or fringe.</p>
+  <h1>🐔 Pixel Chicken Runner — Sprite Verification</h1>
+  <p>Verifying pixel crispness, ground alignment, light & dark theme rendering, and smooth animation loops.</p>
 
-  <div class="grid">
+  <div class="controls">
+    <button onclick="setAnim('run')">Running Loop</button>
+    <button onclick="setAnim('idle')">Idle Breathing</button>
+    <button onclick="setAnim('jump')">Jump Sequence</button>
+    <button onclick="setAnim('crash')">Crash / Game Over</button>
+  </div>
+
+  <div class="grid" style="margin-top: 16px;">
     <div class="panel light">
-      <h3>Light Theme (Cream #F7F5EE)</h3>
-      <canvas id="lightCanvas" width="300" height="200"></canvas>
-      <div id="lightInfo">Frame: 0</div>
+      <h3 style="margin-top:0;">Light Theme (Cream #F7F5EE)</h3>
+      <canvas id="lightCanvas" width="320" height="200"></canvas>
+      <div id="lightInfo" class="status">Mode: Running | Frame: 0</div>
     </div>
 
     <div class="panel dark">
-      <h3>Dark Theme (Tokyo Night #1A1B26)</h3>
-      <canvas id="darkCanvas" width="300" height="200"></canvas>
-      <div id="darkInfo">Frame: 0</div>
+      <h3 style="margin-top:0;">Dark Theme (Tokyo Night #1A1B26)</h3>
+      <canvas id="darkCanvas" width="320" height="200"></canvas>
+      <div id="darkInfo" class="status">Mode: Running | Frame: 0</div>
     </div>
   </div>
 
-  <script>
-    const frames = [];
-    const frameNames = ['run_0', 'run_1', 'run_2', 'run_3', 'run_4', 'run_5'];
-    let loaded = 0;
+  <div class="montage-container">
+    <h3>All 16 Master Pixel Frames</h3>
+    <img src="/sprites/runner/spritesheet_montage.png" alt="All Chicken Sprites" />
+  </div>
 
-    frameNames.forEach((name, i) => {
+  <script>
+    const allNames = [
+      'idle_0', 'idle_1',
+      'run_0', 'run_1', 'run_2', 'run_3', 'run_4', 'run_5',
+      'jump_takeoff', 'jump_ascend', 'jump_peak', 'jump_double', 'jump_fall', 'jump_land',
+      'stumble', 'crash'
+    ];
+
+    const images = {};
+    let loadedCount = 0;
+
+    allNames.forEach((name) => {
       const img = new Image();
       img.src = `/sprites/runner/${name}.png`;
       img.onload = () => {
-        loaded++;
-        if (loaded === frameNames.length) {
-          startAnimation();
+        loadedCount++;
+        if (loadedCount === allNames.length) {
+          startLoop();
         }
       };
-      frames.push(img);
+      images[name] = img;
     });
 
     const lightCtx = document.getElementById('lightCanvas').getContext('2d');
     const darkCtx = document.getElementById('darkCanvas').getContext('2d');
 
-    let currentFrame = 0;
+    let currentMode = 'run';
+    let currentIdx = 0;
     let lastTime = 0;
-    const fps = 10.5; // ~95ms per frame
-    const interval = 1000 / fps;
 
-    function render(ctx, isDark, frameImg, idx) {
+    function setAnim(mode) {
+      currentMode = mode;
+      currentIdx = 0;
+      lastTime = 0;
+    }
+
+    function render(ctx, isDark, frameImg, label) {
       const w = ctx.canvas.width;
       const h = ctx.canvas.height;
-      const groundY = 160;
+      const groundY = 150;
 
       ctx.fillStyle = isDark ? '#1A1B26' : '#F7F5EE';
       ctx.fillRect(0, 0, w, h);
@@ -95,50 +148,81 @@
       ctx.strokeStyle = isDark ? 'rgba(192, 202, 245, 0.08)' : 'rgba(22, 22, 22, 0.08)';
       ctx.lineWidth = 1;
       for (let x = 0; x < w; x += 32) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, h); ctx.stroke();
       }
       for (let y = 0; y < h; y += 32) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(w, y + 0.5); ctx.stroke();
       }
 
-      // Ground
+      // Ground Line
       ctx.strokeStyle = isDark ? '#C0CAF5' : '#161616';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(0, groundY);
       ctx.lineTo(w, groundY);
       ctx.stroke();
 
-      // Shadow
+      // Dynamic Contact Shadow
       ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(22, 22, 22, 0.2)';
       ctx.beginPath();
-      ctx.ellipse(150, groundY + 1, 26, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(w / 2, groundY + 1, 24, 4, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Character Sprite
-      // Render height: 90px (in-game target size)
-      const renderH = 90;
-      const aspect = 320 / 300; // 1.067
-      const renderW = Math.round(renderH * aspect);
-      // Sprite anchor: Torso at x=160/320 -> 50% width, ground at y=275/300 -> 91.6% height
-      const drawX = 150 - Math.round(renderW * 0.5);
-      const drawY = groundY - Math.round(renderH * (275 / 300));
+      // Chicken Sprite
+      // In-game scale: 56x56
+      const renderW = 56;
+      const renderH = 56;
+      const groundOffset = 53; // baseline y=30/32 -> 56 * 30 / 32 = 52.5 ≈ 53
 
-      ctx.drawImage(frameImg, drawX, drawY, renderW, renderH);
+      const drawX = Math.round(w / 2 - renderW / 2);
+      const drawY = Math.round(groundY - groundOffset);
+
+      ctx.imageSmoothingEnabled = false;
+      if (frameImg) {
+        ctx.drawImage(frameImg, drawX, drawY, renderW, renderH);
+      }
     }
 
-    function startAnimation() {
+    function startLoop() {
       function loop(timestamp) {
         if (!lastTime) lastTime = timestamp;
-        if (timestamp - lastTime >= interval) {
-          lastTime = timestamp;
-          currentFrame = (currentFrame + 1) % 6;
-          document.getElementById('lightInfo').textContent = `Frame: ${currentFrame} (${frameNames[currentFrame]})`;
-          document.getElementById('darkInfo').textContent = `Frame: ${currentFrame} (${frameNames[currentFrame]})`;
+
+        let frameKey = 'run_0';
+        let fps = 10;
+
+        if (currentMode === 'run') {
+          fps = 10;
+          const frames = ['run_0', 'run_1', 'run_2', 'run_3', 'run_4', 'run_5'];
+          if (timestamp - lastTime >= 1000 / fps) {
+            lastTime = timestamp;
+            currentIdx = (currentIdx + 1) % frames.length;
+          }
+          frameKey = frames[currentIdx];
+        } else if (currentMode === 'idle') {
+          fps = 1.5;
+          const frames = ['idle_0', 'idle_1'];
+          if (timestamp - lastTime >= 1000 / fps) {
+            lastTime = timestamp;
+            currentIdx = (currentIdx + 1) % frames.length;
+          }
+          frameKey = frames[currentIdx];
+        } else if (currentMode === 'jump') {
+          fps = 4;
+          const frames = ['jump_takeoff', 'jump_ascend', 'jump_peak', 'jump_double', 'jump_fall', 'jump_land'];
+          if (timestamp - lastTime >= 1000 / fps) {
+            lastTime = timestamp;
+            currentIdx = (currentIdx + 1) % frames.length;
+          }
+          frameKey = frames[currentIdx];
+        } else if (currentMode === 'crash') {
+          frameKey = 'crash';
         }
 
-        render(lightCtx, false, frames[currentFrame], currentFrame);
-        render(darkCtx, true, frames[currentFrame], currentFrame);
+        render(lightCtx, false, images[frameKey], frameKey);
+        render(darkCtx, true, images[frameKey], frameKey);
+
+        document.getElementById('lightInfo').textContent = `Mode: ${currentMode} | Sprite: ${frameKey}`;
+        document.getElementById('darkInfo').textContent = `Mode: ${currentMode} | Sprite: ${frameKey}`;
 
         requestAnimationFrame(loop);
       }

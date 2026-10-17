@@ -4,10 +4,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { siteConfig } from '@/config/site';
 import { sound } from './audio';
-import { spriteManager } from './spriteLoader';
+import { renderPixelCat } from './pixelCat';
 import {
   GameState,
   Obstacle,
+  ObstacleType,
   CollectibleToken,
   Particle,
   ProjectMilestone,
@@ -68,6 +69,7 @@ interface EngineState {
     maxJumps: number;
     runFrame: number;
     scarfWave: number;
+    landingTimer: number;
   };
   groundY: number;
   obstacles: Obstacle[];
@@ -81,90 +83,218 @@ interface EngineState {
 
 // Standalone Visual Rendering Helpers (Pure Functions Outside Component)
 
+function renderBugBlock(
+  ctx: CanvasRenderingContext2D,
+  obs: Obstacle,
+  isDark: boolean
+) {
+  const shadowColor = isDark ? '#000000' : '#161616';
+  const cardBg = isDark ? '#16161E' : '#FFFFFF';
+  const borderColor = isDark ? '#FF4D4D' : '#161616';
+  const hazardRed = '#FF3B30';
+  const textColor = isDark ? '#FFFFFF' : '#161616';
+
+  // 1. Hard 4px block shadow
+  ctx.fillStyle = shadowColor;
+  ctx.fillRect(4, 4, obs.width, obs.height);
+
+  // 2. Solid background fill (zero grid bleed)
+  ctx.fillStyle = cardBg;
+  ctx.fillRect(0, 0, obs.width, obs.height);
+
+  // 3. Danger Color Coding: Bright Hazard Red top bar (13px tall)
+  const headerH = 13;
+  ctx.fillStyle = hazardRed;
+  ctx.fillRect(0, 0, obs.width, headerH);
+
+  // Two mini white indicator squares on top bar
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(4, 5, 3, 3);
+  ctx.fillRect(9, 5, 3, 3);
+
+  // Top bar divider line
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, headerH);
+  ctx.lineTo(obs.width, headerH);
+  ctx.stroke();
+
+  // 4. Big, Clear Typography: bold monospace font at 14px "BUG"
+  ctx.fillStyle = textColor;
+  ctx.font = '900 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('BUG', obs.width / 2, 28);
+
+  // 5. Thick 2.5px solid border
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(0, 0, obs.width, obs.height);
+}
+
+function renderPillar404(
+  ctx: CanvasRenderingContext2D,
+  obs: Obstacle,
+  isDark: boolean
+) {
+  const shadowColor = isDark ? '#000000' : '#161616';
+  const cardBg = isDark ? '#16161E' : '#FFFFFF';
+  const borderColor = isDark ? '#FF4D4D' : '#161616';
+  const hazardRed = '#FF3B30';
+  const textColor = isDark ? '#FFFFFF' : '#161616';
+
+  // 1. Hard 4px block shadow
+  ctx.fillStyle = shadowColor;
+  ctx.fillRect(4, 4, obs.width, obs.height);
+
+  // 2. Solid background fill
+  ctx.fillStyle = cardBg;
+  ctx.fillRect(0, 0, obs.width, obs.height);
+
+  // 3. Browser error window top bar (16px tall) with red accent
+  const headerH = 16;
+  ctx.fillStyle = hazardRed;
+  ctx.fillRect(0, 0, obs.width, headerH);
+
+  // Three tiny white window dots
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(4, 6, 3, 3);
+  ctx.fillRect(9, 6, 3, 3);
+  ctx.fillRect(14, 6, 3, 3);
+
+  // Top bar divider line
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, headerH);
+  ctx.lineTo(obs.width, headerH);
+  ctx.stroke();
+
+  // 4. Big, Clear Typography: large bold 15px "404"
+  ctx.fillStyle = textColor;
+  ctx.font = '900 15px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('404', obs.width / 2, 36);
+
+  // 5. Lower status badge with blinking LED
+  const dividerY = 52;
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, dividerY);
+  ctx.lineTo(obs.width, dividerY);
+  ctx.stroke();
+
+  const isBlinkOn = Math.floor(Date.now() / 250) % 2 === 0;
+  ctx.fillStyle = isBlinkOn ? hazardRed : isDark ? '#4A1D24' : '#FAA0A0';
+  ctx.beginPath();
+  ctx.arc(8, 60, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = textColor;
+  ctx.font = '900 9px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('ERR', 14, 60);
+
+  // 6. Thick 2.5px solid border
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(0, 0, obs.width, obs.height);
+}
+
+function renderErrBarrier(
+  ctx: CanvasRenderingContext2D,
+  obs: Obstacle,
+  isDark: boolean
+) {
+  const shadowColor = isDark ? '#000000' : '#161616';
+  const cardBg = isDark ? '#16161E' : '#FFFFFF';
+  const borderColor = isDark ? '#FF4D4D' : '#161616';
+  const hazardRed = '#FF3B30';
+  const yellowHazard = '#FACC00';
+  const textColor = isDark ? '#FFFFFF' : '#161616';
+
+  // 1. Hard 4px block shadow
+  ctx.fillStyle = shadowColor;
+  ctx.fillRect(4, 4, obs.width, obs.height);
+
+  // 2. Solid background fill
+  ctx.fillStyle = cardBg;
+  ctx.fillRect(0, 0, obs.width, obs.height);
+
+  // 3. Bold diagonal hazard stripes along top (12px tall)
+  const stripeH = 12;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, obs.width, stripeH);
+  ctx.clip();
+  ctx.fillStyle = yellowHazard;
+  ctx.fillRect(0, 0, obs.width, stripeH);
+  ctx.fillStyle = '#161616';
+  const stripeOffset = ((obs.animPhase || 0) * 8) % 12;
+  for (let sx = -24 + stripeOffset; sx < obs.width + 24; sx += 12) {
+    ctx.beginPath();
+    ctx.moveTo(sx, 0);
+    ctx.lineTo(sx + 6, 0);
+    ctx.lineTo(sx - 2, stripeH);
+    ctx.lineTo(sx - 8, stripeH);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Top bar divider line
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, stripeH);
+  ctx.lineTo(obs.width, stripeH);
+  ctx.stroke();
+
+  // 4. Solid red hazard square accents on left and right
+  ctx.fillStyle = hazardRed;
+  ctx.fillRect(3, 17, 7, 14);
+  ctx.fillRect(obs.width - 10, 17, 7, 14);
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(3, 17, 7, 14);
+  ctx.strokeRect(obs.width - 10, 17, 7, 14);
+
+  // 5. Big, Clear Typography: Solid ERR badge in the middle with bold 14px monospace font
+  ctx.fillStyle = textColor;
+  ctx.font = '900 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('ERR', obs.width / 2, 24);
+
+  // 6. Thick 2.5px solid border
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(0, 0, obs.width, obs.height);
+}
+
 function renderObstacle(
   ctx: CanvasRenderingContext2D,
   obs: Obstacle,
-  isDark: boolean,
-  ink: string,
-  accent: string
+  isDark: boolean
 ) {
   ctx.save();
   ctx.translate(obs.x, obs.y);
 
-  if (obs.type === 'BUG_SPIKE') {
-    // Neo-brutalist triangular bug / caution hazard
-    ctx.fillStyle = '#EF4444';
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2.5;
-
-    ctx.beginPath();
-    ctx.moveTo(obs.width / 2, 0);
-    ctx.lineTo(obs.width, obs.height);
-    ctx.lineTo(0, obs.height);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Warning exclamation inside
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 15px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('!', obs.width / 2, obs.height - 8);
-  } else if (obs.type === 'MERGE_CONFLICT') {
-    // Merge conflict barrier with cross stripes
-    ctx.fillStyle = isDark ? '#1F2937' : '#FFFFFF';
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2.5;
-    ctx.fillRect(0, 0, obs.width, obs.height);
-    ctx.strokeRect(0, 0, obs.width, obs.height);
-
-    ctx.fillStyle = accent;
-    ctx.beginPath();
-    ctx.moveTo(0, 10);
-    ctx.lineTo(12, 0);
-    ctx.lineTo(24, 0);
-    ctx.lineTo(0, 20);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(12, obs.height);
-    ctx.lineTo(obs.width, 10);
-    ctx.lineTo(obs.width, 22);
-    ctx.lineTo(24, obs.height);
-    ctx.fill();
-
-    ctx.fillStyle = ink;
-    ctx.font = 'bold 10px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('><', obs.width / 2, obs.height / 2 + 3);
+  if (obs.type === 'PILLAR_404' || obs.type === 'SERVER_STACK') {
+    renderPillar404(ctx, obs, isDark);
+  } else if (
+    obs.type === 'ERR_BARRIER' ||
+    obs.type === 'MERGE_GATE' ||
+    obs.type === 'MERGE_CONFLICT'
+  ) {
+    renderErrBarrier(ctx, obs, isDark);
   } else {
-    // SERVER_STACK / Memory block
-    ctx.fillStyle = isDark ? '#111827' : '#E5E7EB';
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 2.5;
-    ctx.fillRect(0, 0, obs.width, obs.height);
-    ctx.strokeRect(0, 0, obs.width, obs.height);
-
-    const rackH = obs.height / 3;
-    for (let r = 0; r < 3; r++) {
-      const ry = r * rackH;
-      ctx.beginPath();
-      ctx.moveTo(0, ry);
-      ctx.lineTo(obs.width, ry);
-      ctx.stroke();
-
-      ctx.fillStyle = r === 1 ? '#22C55E' : accent;
-      ctx.beginPath();
-      ctx.arc(8, ry + rackH / 2, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = ink;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(16, ry + rackH / 2);
-      ctx.lineTo(obs.width - 6, ry + rackH / 2);
-      ctx.stroke();
-    }
+    // BUG_BLOCK / SYNTAX_BUG / BUG_SPIKE / SCOPE_CREEP / default
+    renderBugBlock(ctx, obs, isDark);
   }
 
   ctx.restore();
@@ -214,91 +344,6 @@ function renderToken(
   ctx.restore();
 }
 
-function renderFallbackPlayer(
-  ctx: CanvasRenderingContext2D,
-  p: EngineState['player'],
-  isDark: boolean,
-  ink: string,
-  accent: string
-) {
-  ctx.save();
-  ctx.translate(p.x, p.y);
-
-  const runCycle = Math.sin(p.runFrame);
-  const legSwing = p.isGrounded ? runCycle * 14 : -10;
-  const bodyBob = p.isGrounded ? Math.abs(runCycle) * 2.5 : -2;
-
-  // 1. Flowing Accent Scarf
-  ctx.fillStyle = accent;
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  const wave = Math.sin(p.scarfWave) * 5;
-  ctx.moveTo(10, 20 + bodyBob);
-  ctx.quadraticCurveTo(-12, 18 + wave + bodyBob, -24, 24 - wave + bodyBob);
-  ctx.lineTo(-22, 32 - wave + bodyBob);
-  ctx.quadraticCurveTo(-10, 26 + wave + bodyBob, 12, 26 + bodyBob);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  // 2. Tech Backpack
-  ctx.fillStyle = isDark ? '#282A36' : '#E5E2D9';
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 2;
-  ctx.fillRect(2, 16 + bodyBob, 10, 20);
-  ctx.strokeRect(2, 16 + bodyBob, 10, 20);
-
-  // 3. Legs & Shoes
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = ink;
-
-  ctx.beginPath();
-  ctx.moveTo(22, 38 + bodyBob);
-  ctx.lineTo(22 - legSwing * 0.8, 48);
-  ctx.lineTo(26 - legSwing * 0.8, 51);
-  ctx.stroke();
-  ctx.fillStyle = accent;
-  ctx.fillRect(22 - legSwing * 0.8, 48, 8, 4);
-  ctx.strokeRect(22 - legSwing * 0.8, 48, 8, 4);
-
-  ctx.beginPath();
-  ctx.moveTo(28, 38 + bodyBob);
-  ctx.lineTo(28 + legSwing * 0.8, 48);
-  ctx.lineTo(34 + legSwing * 0.8, 51);
-  ctx.stroke();
-  ctx.fillStyle = isDark ? '#FFFFFF' : '#161616';
-  ctx.fillRect(28 + legSwing * 0.8, 48, 8, 4);
-  ctx.strokeRect(28 + legSwing * 0.8, 48, 8, 4);
-
-  // 4. Torso
-  ctx.fillStyle = isDark ? '#2E3440' : '#FFFFFF';
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 2.5;
-  ctx.fillRect(12, 15 + bodyBob, 22, 24);
-  ctx.strokeRect(12, 15 + bodyBob, 22, 24);
-
-  ctx.fillStyle = accent;
-  ctx.fillRect(16, 26 + bodyBob, 14, 8);
-  ctx.strokeRect(16, 26 + bodyBob, 14, 8);
-
-  // 5. Head & Cap
-  ctx.fillStyle = isDark ? '#E5C07B' : '#FFE0B2';
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(24, 8 + bodyBob, 9, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = ink;
-  ctx.fillRect(16, 0 + bodyBob, 16, 5);
-  ctx.fillRect(22, 2 + bodyBob, 14, 3);
-  ctx.fillRect(27, 8 + bodyBob, 4, 2);
-
-  ctx.restore();
-}
-
 function renderPlayer(
   ctx: CanvasRenderingContext2D,
   engine: EngineState,
@@ -306,85 +351,15 @@ function renderPlayer(
   ink: string,
   accent: string
 ) {
-  const p = engine.player;
-  const groundY = engine.groundY;
-
-  // 1. Dynamic Neo-brutalist Ground Contact Shadow
-  const distFromGround = Math.max(0, groundY - (p.y + p.height));
-  const shadowScale = Math.max(0.3, 1 - distFromGround / 180);
-  const shadowAlpha = Math.max(0.06, (1 - distFromGround / 200) * (isDark ? 0.35 : 0.22));
-
-  ctx.save();
-  ctx.fillStyle = isDark ? `rgba(0, 0, 0, ${shadowAlpha})` : `rgba(22, 22, 22, ${shadowAlpha})`;
-  ctx.beginPath();
-  ctx.ellipse(
-    p.x + p.width / 2 + 2,
-    groundY + 1,
-    p.width * 0.72 * shadowScale,
-    4.0 * shadowScale,
-    0,
-    0,
-    Math.PI * 2
+  renderPixelCat(
+    ctx,
+    engine.player,
+    engine.groundY,
+    engine.gameState,
+    isDark,
+    ink,
+    accent
   );
-  ctx.fill();
-  ctx.restore();
-
-  // 2. Select Sprite Key based on exact character state
-  let spriteKey = 'run_0';
-
-  if (engine.gameState === 'GAME_OVER') {
-    spriteKey = 'crash';
-  } else if (engine.gameState === 'START') {
-    // Idle breathing animation
-    const isBreathing = Math.floor(Date.now() / 600) % 2 === 1;
-    spriteKey = isBreathing ? 'idle_1' : 'idle_0';
-  } else if (engine.gameState === 'DISCOVERY') {
-    spriteKey = 'idle_1';
-  } else if (!p.isGrounded) {
-    if (p.jumpCount >= 2) {
-      // Double jump aerial spin tuck
-      spriteKey = 'jump_double';
-    } else if (p.vy < -7) {
-      // Jump launch
-      spriteKey = 'jump_ascend';
-    } else if (p.vy <= 3) {
-      // Jump apex
-      spriteKey = 'jump_peak';
-    } else {
-      // Descending towards ground
-      spriteKey = 'jump_fall';
-    }
-  } else {
-    // Ground running loop (6 distinct frames synced to speed)
-    const runIdx = Math.floor(p.runFrame) % 6;
-    spriteKey = `run_${runIdx}`;
-  }
-
-  // 3. Draw Sprite if loaded, otherwise fallback gracefully
-  const sprite = spriteManager.getSprite(spriteKey);
-  const info = spriteManager.getSpriteInfo(spriteKey);
-
-  if (sprite && info) {
-    // Account for transparent margins inside the standardized canvas to restore full visual presence:
-    // info.renderW, info.renderH, and info.groundOffset calibrate the visible character height
-    // to ~84px in running and ~96px in idle, perfectly proportionate to 38-46px obstacles.
-    const renderW = info.renderW;
-    const renderH = info.renderH;
-
-    // Torso is centered at 50% width (X=280 of 560): align with player hitbox center
-    const drawX = Math.round(p.x + p.width / 2 - renderW / 2);
-
-    // Ground baseline is anchored at Y=630: align with player ground plane (p.y + p.height)
-    const drawY = Math.round(p.y + p.height - info.groundOffset);
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(sprite, drawX, drawY, renderW, renderH);
-    ctx.restore();
-  } else {
-    renderFallbackPlayer(ctx, p, isDark, ink, accent);
-  }
 }
 
 function renderWorld(
@@ -466,7 +441,7 @@ function renderWorld(
 
   // D. Obstacles
   engine.obstacles.forEach((obs) => {
-    renderObstacle(ctx, obs, isDark, inkColor, accentColor);
+    renderObstacle(ctx, obs, isDark);
   });
 
   // E. Collectible Project Tokens
@@ -493,7 +468,15 @@ function renderWorld(
     ctx.strokeStyle = inkColor;
     ctx.lineWidth = 1;
 
-    if (pt.shape === 'spark') {
+    if (pt.shape === 'text' && pt.text) {
+      ctx.font = `900 ${pt.size}px monospace`;
+      ctx.textAlign = 'center';
+      // Hard offset shadow for floating near-miss text
+      ctx.fillStyle = isDark ? '#000000' : '#161616';
+      ctx.fillText(pt.text, pt.x + 2, pt.y + 2);
+      ctx.fillStyle = pt.color;
+      ctx.fillText(pt.text, pt.x, pt.y);
+    } else if (pt.shape === 'spark') {
       ctx.translate(pt.x, pt.y);
       ctx.rotate(pt.life * 0.2);
       ctx.fillRect(-pt.size / 2, -pt.size / 2, pt.size, pt.size);
@@ -555,6 +538,7 @@ export default function ProjectDiscoveryGame({ headerSlot }: ProjectDiscoveryGam
       maxJumps: 2,
       runFrame: 0,
       scarfWave: 0,
+      landingTimer: 0,
     },
     groundY: 0,
     obstacles: [],
@@ -621,13 +605,13 @@ export default function ProjectDiscoveryGame({ headerSlot }: ProjectDiscoveryGam
       engine.tokens.push({
         id: milestone.slug,
         projectSlug: milestone.slug,
-        x: Math.max(width + 200, engine.lastSpawnX + 350),
+        x: Math.max(width + 200, engine.lastSpawnX + 380),
         y: engine.groundY - 80,
         radius: 24,
         collected: false,
         pulsePhase: 0,
       });
-      engine.lastSpawnX = Math.max(width + 200, engine.lastSpawnX + 350);
+      engine.lastSpawnX = Math.max(width + 200, engine.lastSpawnX + 380);
     }
   }, []);
 
@@ -639,6 +623,7 @@ export default function ProjectDiscoveryGame({ headerSlot }: ProjectDiscoveryGam
     engine.player.vy = 0;
     engine.player.isGrounded = true;
     engine.player.jumpCount = 0;
+    engine.player.landingTimer = 0;
     engine.obstacles = [];
     engine.tokens = [];
     engine.particles = [];
@@ -870,8 +855,13 @@ export default function ProjectDiscoveryGame({ headerSlot }: ProjectDiscoveryGam
           if (!p.isGrounded) {
             p.isGrounded = true;
             p.jumpCount = 0;
+            p.landingTimer = 4;
             createDustParticles(p.x + p.width / 2, engine.groundY, 4);
           }
+        }
+
+        if (p.landingTimer > 0) {
+          p.landingTimer -= 1 * dt;
         }
 
         if (p.isGrounded) {
@@ -902,38 +892,44 @@ export default function ProjectDiscoveryGame({ headerSlot }: ProjectDiscoveryGam
           }
         }
 
-        // Obstacle Spawning
-        const minGap = 240 + engine.speed * 18;
+        // Obstacle Spawning (Generous Spacing & 280px Token Buffer Zone)
+        const minGap = 350 + engine.speed * 20;
         if (engine.lastSpawnX < width - minGap) {
-          const spawnChance = 0.04;
-          if (Math.random() < spawnChance) {
-            const types: ('BUG_SPIKE' | 'MERGE_CONFLICT' | 'SERVER_STACK')[] = [
-              'BUG_SPIKE',
-              'MERGE_CONFLICT',
-              'SERVER_STACK',
-            ];
-            const chosenType = types[Math.floor(Math.random() * types.length)];
+          // Keep at least 280px buffer zone before and after every Collectible Project Token
+          const isNearToken = engine.tokens.some((t) => Math.abs((width + 40) - t.x) < 280);
+          const isMilestoneImminent =
+            engine.nextMilestoneIndex < MILESTONES.length &&
+            Math.abs(engine.distance - MILESTONES[engine.nextMilestoneIndex].tokenSpawnDistance) < 280;
 
-            let obsW = 32;
-            let obsH = 38;
-            if (chosenType === 'MERGE_CONFLICT') {
-              obsW = 42;
-              obsH = 40;
-            } else if (chosenType === 'SERVER_STACK') {
-              obsW = 36;
-              obsH = 46;
+          if (!isNearToken && !isMilestoneImminent) {
+            const spawnChance = 0.04;
+            if (Math.random() < spawnChance) {
+              const types: ObstacleType[] = ['BUG_BLOCK', 'PILLAR_404', 'ERR_BARRIER'];
+              const chosenType = types[Math.floor(Math.random() * types.length)];
+
+              let obsW = 40;
+              let obsH = 42;
+              if (chosenType === 'PILLAR_404') {
+                obsW = 36;
+                obsH = 68;
+              } else if (chosenType === 'ERR_BARRIER') {
+                obsW = 64;
+                obsH = 36;
+              }
+
+              engine.obstacles.push({
+                x: width + 40,
+                y: engine.groundY - obsH,
+                width: obsW,
+                height: obsH,
+                type: chosenType,
+                passed: false,
+                nearMissChecked: false,
+                animPhase: Math.random() * 10,
+              });
+
+              engine.lastSpawnX = width + 40;
             }
-
-            engine.obstacles.push({
-              x: width + 40,
-              y: engine.groundY - obsH,
-              width: obsW,
-              height: obsH,
-              type: chosenType,
-              passed: false,
-            });
-
-            engine.lastSpawnX = width + 40;
           }
         } else {
           engine.lastSpawnX -= engine.speed * dt;
@@ -943,7 +939,9 @@ export default function ProjectDiscoveryGame({ headerSlot }: ProjectDiscoveryGam
         for (let i = engine.obstacles.length - 1; i >= 0; i--) {
           const obs = engine.obstacles[i];
           obs.x -= engine.speed * dt;
+          obs.animPhase = (obs.animPhase || 0) + 0.06 * dt;
 
+          // Forgiving hitboxes: Inset by 7px on all 4 sides
           const playerHitbox = {
             left: p.x + 8,
             right: p.x + p.width - 8,
@@ -951,10 +949,10 @@ export default function ProjectDiscoveryGame({ headerSlot }: ProjectDiscoveryGam
             bottom: p.y + p.height - 2,
           };
           const obsHitbox = {
-            left: obs.x + 6,
-            right: obs.x + obs.width - 6,
-            top: obs.y + 6,
-            bottom: obs.y + obs.height,
+            left: obs.x + 7,
+            right: obs.x + obs.width - 7,
+            top: obs.y + 7,
+            bottom: obs.y + obs.height - 7,
           };
 
           const isColliding =
@@ -966,6 +964,49 @@ export default function ProjectDiscoveryGame({ headerSlot }: ProjectDiscoveryGam
           if (isColliding) {
             handleGameOver();
             break;
+          }
+
+          // Near-miss detection: triggers once when player passes the obstacle
+          if (!obs.nearMissChecked && playerHitbox.left > obsHitbox.right) {
+            obs.nearMissChecked = true;
+            const jumpedOverClose =
+              playerHitbox.bottom <= obsHitbox.top &&
+              obsHitbox.top - playerHitbox.bottom <= 18;
+
+            if (jumpedOverClose) {
+              sound.playNearMiss();
+
+              // Floating "+CLOSE CALL" text particle
+              engine.particles.push({
+                x: p.x + p.width / 2,
+                y: p.y - 12,
+                vx: 0.2,
+                vy: -1.2,
+                size: 13,
+                color: '#FACC00',
+                alpha: 1,
+                life: 0,
+                maxLife: 45,
+                shape: 'text',
+                text: '+CLOSE CALL',
+              });
+
+              // Yellow spark burst
+              for (let s = 0; s < 5; s++) {
+                engine.particles.push({
+                  x: obsHitbox.right,
+                  y: obsHitbox.top,
+                  vx: (Math.random() - 0.5) * 3 - 1,
+                  vy: (Math.random() - 0.5) * 3 - 1,
+                  size: 3 + Math.random() * 3,
+                  color: '#FACC00',
+                  alpha: 1,
+                  life: 0,
+                  maxLife: 25,
+                  shape: 'spark',
+                });
+              }
+            }
           }
 
           if (obs.x + obs.width < -60) {

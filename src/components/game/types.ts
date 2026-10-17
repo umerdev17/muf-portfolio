@@ -2,15 +2,27 @@ import { Project } from '@/config/site';
 
 export type GameState = 'START' | 'PLAYING' | 'DISCOVERY' | 'GAME_OVER' | 'COMPLETED';
 
-export type ObstacleType = 'BUG_SPIKE' | 'MERGE_CONFLICT' | 'SERVER_STACK';
+export type ObstacleType =
+  | 'BUG_BLOCK'
+  | 'PILLAR_404'
+  | 'ERR_BARRIER'
+  | 'SYNTAX_BUG'
+  | 'MERGE_GATE'
+  | 'SCOPE_CREEP'
+  | 'BUG_SPIKE'
+  | 'MERGE_CONFLICT'
+  | 'SERVER_STACK';
 
 export interface Obstacle {
   x: number;
   y: number;
+  baseY?: number;
   width: number;
   height: number;
   type: ObstacleType;
   passed: boolean;
+  nearMissChecked?: boolean;
+  animPhase?: number;
 }
 
 export interface CollectibleToken {
@@ -33,7 +45,8 @@ export interface Particle {
   alpha: number;
   life: number;
   maxLife: number;
-  shape?: 'square' | 'circle' | 'spark';
+  shape?: 'square' | 'circle' | 'spark' | 'text';
+  text?: string;
 }
 
 export interface ProjectMilestone {
